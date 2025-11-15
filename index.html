@@ -1,0 +1,823 @@
+<!doctype html>
+<html lang="en" dir="ltr">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Eltourath Mail Composer (Light Pro)</title>
+    <style>
+        :root {
+            --bg: #f6f9ff;
+            --card: #fff;
+            --border: #e3eaf5;
+            --text: #0f172a;
+            --muted: #64748b;
+            --accent: #2563eb;
+            --accent-soft: #e8f0ff;
+            --danger: #ef4444;
+            --shadow: 0 10px 28px rgba(16, 24, 40, .08);
+            --ok: #16a34a;
+            --warn: #b45309;
+        }
+
+        body {
+            background: var(--bg);
+            color: var(--text);
+            font-family: Tahoma, Arial, sans-serif;
+            margin: 0;
+            direction: ltr
+        }
+
+        .wrap {
+            max-width: 1000px;
+            margin: 30px auto;
+            padding: 0 16px
+        }
+
+        .card {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: var(--shadow)
+        }
+
+        .head {
+            padding: 18px 22px;
+            background: linear-gradient(135deg, #fff, #f7faff);
+            border-bottom: 1px solid var(--border)
+        }
+
+        h1 {
+            margin: 0;
+            font-size: 21px
+        }
+
+        .meta {
+            margin-top: 6px;
+            color: var(--muted);
+            font-size: 12px
+        }
+
+        .body {
+            padding: 18px 22px
+        }
+
+        .row {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            margin-bottom: 10px
+        }
+
+        label {
+            font-size: 12px;
+            color: #334155;
+            min-width: 72px
+        }
+
+        input[type="text"],
+        input[type="email"] {
+            flex: 1;
+            padding: 10px 12px;
+            border-radius: 10px;
+            border: 1px solid var(--border);
+            background: #fff;
+            color: var(--text)
+        }
+
+        .email-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            margin-bottom: 8px
+        }
+
+        .email-item {
+            display: flex;
+            gap: 8px;
+            align-items: flex-start;
+            position: relative
+        }
+
+        .email-item .remove {
+            background: #fff;
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 8px 10px;
+            cursor: pointer
+        }
+
+        .add {
+            background: #fff;
+            border: 1px dashed var(--border);
+            border-radius: 10px;
+            padding: 8px 12px;
+            cursor: pointer;
+            color: var(--accent);
+            margin-bottom: 10px
+        }
+
+        .hint-list {
+            position: absolute;
+            top: 42px;
+            right: 82px;
+            left: 0;
+            background: #fff;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 6px;
+            z-index: 5;
+            box-shadow: var(--shadow);
+            display: none;
+            max-height: 180px;
+            overflow: auto
+        }
+
+        .hint-item {
+            padding: 6px 10px;
+            border-radius: 8px;
+            cursor: pointer
+        }
+
+        .hint-item:hover {
+            background: var(--accent-soft)
+        }
+
+        .invalid {
+            border-color: var(--danger) !important
+        }
+
+        .dup {
+            border-color: #f97316 !important
+        }
+
+        .toolbar {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin: 12px 0 8px
+        }
+
+        .tool,
+        select {
+            background: #fff;
+            color: var(--text);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 8px 10px;
+            cursor: pointer;
+            font-size: 14px;
+            box-shadow: 0 2px 0 rgba(0, 0, 0, .02)
+        }
+
+        .tool:hover {
+            background: var(--accent-soft);
+            border-color: #cfe0ff
+        }
+
+        .tool.active {
+            background: #e7efff;
+            border-color: #bcd3ff;
+            box-shadow: inset 0 0 0 1px #9ec0ff
+        }
+
+        .sep {
+            width: 1px;
+            height: 34px;
+            background: var(--border);
+            margin: 0 6px
+        }
+
+        .editor {
+            background: #fff;
+            border: 1px dashed #d7e2f1;
+            border-radius: 12px;
+            min-height: 300px;
+            padding: 14px;
+            line-height: 1.9
+        }
+
+        .actions {
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+            margin-top: 14px
+        }
+
+        .btn {
+            background: var(--accent);
+            color: #fff;
+            border: 0;
+            border-radius: 12px;
+            padding: 10px 14px;
+            font-weight: 700;
+            cursor: pointer
+        }
+
+        .btn:disabled {
+            opacity: .6;
+            cursor: not-allowed
+        }
+
+        .status {
+            font-size: 12px;
+            color: var(--muted)
+        }
+
+        .attach {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin: 10px 0
+        }
+
+        .files {
+            margin-top: 6px;
+            font-size: 12px;
+            color: #334155
+        }
+
+        .file-item {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 4px 8px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            background: #fff;
+            margin: 2px 4px
+        }
+
+        .file-item button {
+            border: 0;
+            background: #f1f5ff;
+            border-radius: 6px;
+            padding: 4px 6px;
+            cursor: pointer
+        }
+
+        .drop {
+            border: 1px dashed var(--border);
+            border-radius: 10px;
+            padding: 10px 12px;
+            background: #fff
+        }
+
+        .drop.drag {
+            background: #f8fbff;
+            border-color: #bcd3ff
+        }
+
+        /* ===== Overlay + Spinner + Result Modal ===== */
+        .overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(15, 23, 42, .35);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999
+        }
+
+        .overlay.show {
+            display: flex
+        }
+
+        .spinner {
+            width: 58px;
+            height: 58px;
+            border: 5px solid #e6ecf5;
+            border-top-color: var(--accent);
+            border-radius: 50%;
+            animation: spin 0.9s linear infinite;
+            background: #fff
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg)
+            }
+        }
+
+        .result {
+            display: none;
+            position: fixed;
+            inset: 0;
+            z-index: 10000;
+            align-items: center;
+            justify-content: center
+        }
+
+        .result.show {
+            display: flex
+        }
+
+        .result-card {
+            background: #fff;
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            box-shadow: var(--shadow);
+            width: min(420px, 92%);
+            padding: 18px
+        }
+
+        .result-row {
+            display: flex;
+            gap: 12px;
+            align-items: flex-start
+        }
+
+        .badge {
+            width: 34px;
+            height: 34px;
+            display: inline-grid;
+            place-items: center;
+            border-radius: 10px;
+            font-weight: 800
+        }
+
+        .badge.ok {
+            background: #eaf6ef;
+            color: var(--ok);
+            border: 1px solid #c6eed4
+        }
+
+        .badge.err {
+            background: #fff2f2;
+            color: var(--danger);
+            border: 1px solid #ffd7d7
+        }
+
+        .result-title {
+            margin: 0 0 4px 0;
+            font-size: 16px
+        }
+
+        .result-msg {
+            margin: 0;
+            color: #475569;
+            font-size: 13px
+        }
+
+        .result-footer {
+            display: flex;
+            justify-content: flex-end;
+            margin-top: 14px
+        }
+
+        .btn-ok {
+            background: #111827;
+            color: #fff;
+            border: 0;
+            border-radius: 10px;
+            padding: 8px 12px;
+            cursor: pointer
+        }
+    </style>
+</head>
+
+<body>
+    <div class="wrap">
+        <div class="card">
+            <div class="head">
+                <h1>Eltourath Mail Composer (Light Pro)</h1>
+            </div>
+            <div class="body">
+
+                <!-- Recipients -->
+                <div class="email-list" id="emailList"></div>
+                <button class="add" type="button" onclick="addEmailField()">+ Add recipient</button>
+
+                <div class="row">
+                    <label for="subject">Subject</label>
+                    <input id="subject" type="text" placeholder="Subject">
+                </div>
+
+                <!-- Attachments (multi + remove) -->
+                <div class="attach">
+                    <label for="files">Attachments</label>
+                    <input id="files" type="file" multiple>
+                </div>
+                <div id="dropZone" class="drop">Click or drag files here</div>
+                <div id="fileList" class="files"></div>
+
+                <!-- Toolbar -->
+                <div class="toolbar">
+                    <button id="btnBold" class="tool" type="button" onclick="toggleCmd('bold')"><b>B</b></button>
+                    <button id="btnItalic" class="tool" type="button" onclick="toggleCmd('italic')"><i>I</i></button>
+                    <button id="btnUnderline" class="tool" type="button"
+                        onclick="toggleCmd('underline')"><u>U</u></button>
+                    <button id="btnHL" class="tool" type="button" onclick="toggleHighlight()">HL</button>
+                    <button class="tool" type="button" onclick="exec('removeFormat')">⟲</button>
+
+                    <div class="sep"></div>
+
+                    <select id="fontSizeSel" class="tool" onchange="setFontPx(this.value)">
+                        <option value="">Font size</option>
+                        <option value="14">14px</option>
+                        <option value="16" selected>16px</option>
+                        <option value="18">18px</option>
+                        <option value="20">20px</option>
+                        <option value="22">22px</option>
+                        <option value="24">24px</option>
+                    </select>
+                    <select class="tool" onchange="exec('formatBlock', this.value)">
+                        <option value="">Format</option>
+                        <option value="p">Paragraph</option>
+                        <option value="h2">Subheading</option>
+                        <option value="h3">Small title</option>
+                    </select>
+
+                    <div class="sep"></div>
+
+                    <button id="btnAlignLeft" class="tool" type="button" onclick="align('left')">Left</button>
+                    <button id="btnAlignCenter" class="tool" type="button" onclick="align('center')">Center</button>
+                    <button id="btnAlignRight" class="tool" type="button" onclick="align('right')">Right</button>
+
+                    <div class="sep"></div>
+
+                    <button class="tool" type="button" onclick="exec('insertUnorderedList')">• List</button>
+                    <button class="tool" type="button" onclick="addLink()">🔗 Link</button>
+                    <button class="tool" type="button" onclick="insertDivider()">—</button>
+                    <button class="tool" type="button" onclick="insertCTA()">CTA</button>
+
+                    <div class="sep"></div>
+                    <span id="wc" class="status">0 words</span>
+                </div>
+
+                <!-- Editor -->
+                <div id="editor" class="editor" contenteditable="true">
+                    <h2 style="margin:0 0 8px 0;"></h2>
+                    <p><b></b><mark style="background:#fff2a8"></mark></p>
+                </div>
+
+                <div class="actions">
+                    <button class="btn" id="sendBtn" onclick="sendEmail()">Send</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Spinner Overlay -->
+    <div id="overlay" class="overlay" aria-hidden="true">
+        <div class="spinner" role="status" aria-label="Sending..."></div>
+    </div>
+
+    <!-- Result Modal -->
+    <div id="result" class="result" aria-hidden="true">
+        <div class="result-card" role="dialog" aria-modal="true" aria-labelledby="resTitle">
+            <div class="result-row">
+                <div id="resBadge" class="badge">!</div>
+                <div>
+                    <h3 id="resTitle" class="result-title">Status</h3>
+                    <p id="resMsg" class="result-msg">...</p>
+                </div>
+            </div>
+            <div class="result-footer">
+                <button id="btnOK" class="btn-ok" type="button">OK</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ===== Config =====
+        const API_URL = "https://kzy8e3t6nf.execute-api.us-east-1.amazonaws.com/prod/send";
+        const EMAIL_RE = /^[A-Z0-9._%+\-]+@[A-Z0-9.\-]+\.[A-Z]{2,}$/i;
+        const STORAGE_KEY = 'eltourath_email_history';
+
+        // ===== Editor (Word-like) =====
+        document.execCommand('styleWithCSS', false, true);
+        const editor = document.getElementById('editor');
+        const btnHL = document.getElementById('btnHL');
+        const alignBtns = {
+            left: document.getElementById('btnAlignLeft'),
+            center: document.getElementById('btnAlignCenter'),
+            right: document.getElementById('btnAlignRight')
+        };
+
+        function exec(cmd, val = null) { document.execCommand(cmd, false, val); refreshState(); renderPreview(); wordCount(); }
+        function toggleCmd(cmd) { document.execCommand(cmd, false, null); refreshState(); editor.focus(); }
+        function toggleHighlight() {
+            const color = '#fff2a8'; const bg = getComputedBackColor();
+            if (bg === 'rgb(255, 242, 168)') { document.execCommand('backColor', false, '#ffffff'); btnHL.classList.remove('active'); }
+            else { document.execCommand('backColor', false, color); btnHL.classList.add('active'); }
+            renderPreview(); wordCount(); editor.focus();
+        }
+        function getComputedBackColor() {
+            const sel = window.getSelection(); if (!sel.rangeCount) return '';
+            let node = sel.anchorNode; if (node && node.nodeType === 3) node = node.parentNode;
+            if (!node || node.nodeType !== 1) return ''; return window.getComputedStyle(node).backgroundColor || '';
+        }
+        function setFontPx(px) {
+            if (!px) return; wrapSelectionWithSpanStyle('font-size:' + px + 'px'); renderPreview(); wordCount(); editor.focus();
+        }
+        function wrapSelectionWithSpanStyle(styleStr) {
+            const sel = window.getSelection(); if (!sel.rangeCount) return;
+            const range = sel.getRangeAt(0);
+            if (range.collapsed) {
+                const span = document.createElement('span'); span.setAttribute('style', styleStr);
+                span.appendChild(document.createTextNode('\u200b')); range.insertNode(span);
+                const r = document.createRange(); r.setStart(span.firstChild, 1); r.collapse(true);
+                sel.removeAllRanges(); sel.addRange(r);
+            } else {
+                const span = document.createElement('span'); span.setAttribute('style', styleStr);
+                try { range.surroundContents(span); } catch { document.execCommand('fontSize', false, 4); }
+            }
+        }
+        function addLink() { const url = prompt("Enter URL (https://):"); if (url) { document.execCommand('createLink', false, url); } renderPreview(); wordCount(); editor.focus(); }
+        function insertDivider() { const hr = document.createElement('div'); hr.setAttribute('style', 'height:1px;background:#e6ecf5;margin:14px 0;'); insertNode(hr); }
+        function insertCTA() {
+            const c = document.createElement('div');
+            c.innerHTML = `<table role="presentation" cellspacing="0" cellpadding="0" border="0" style="margin:14px 0;"><tr><td align="center" bgcolor="#2563eb" style="border-radius:8px;"><a href="https://eltourath.com" style="display:inline-block;padding:10px 18px;border-radius:8px;color:#ffffff;text-decoration:none;font-weight:700;font-family:Tahoma, Arial, sans-serif;">Contact us</a></td></tr></table>`;
+            insertNode(c);
+        }
+        function insertNode(node) {
+            const sel = window.getSelection(); if (!sel.rangeCount) return;
+            const range = sel.getRangeAt(0); range.collapse(false); range.insertNode(node);
+            range.setStartAfter(node); range.setEndAfter(node); sel.removeAllRanges(); sel.addRange(range);
+            renderPreview(); wordCount(); editor.focus();
+        }
+        function align(dir) {
+            document.execCommand('justifyLeft', false, null);
+            document.execCommand('justifyCenter', false, null);
+            document.execCommand('justifyRight', false, null);
+            if (dir === 'left') document.execCommand('justifyLeft', false, null);
+            if (dir === 'center') document.execCommand('justifyCenter', false, null);
+            if (dir === 'right') document.execCommand('justifyRight', false, null);
+            refreshState(); editor.focus();
+        }
+        function currentTextAlign() {
+            const sel = window.getSelection(); if (!sel.rangeCount) return '';
+            let node = sel.anchorNode; if (node && node.nodeType === 3) node = node.parentNode;
+            if (!node || node.nodeType !== 1) return ''; return (getComputedStyle(node).textAlign || '').toLowerCase();
+        }
+        function refreshState() {
+            document.getElementById('btnBold')?.classList.toggle('active', document.queryCommandState('bold'));
+            document.getElementById('btnItalic')?.classList.toggle('active', document.queryCommandState('italic'));
+            document.getElementById('btnUnderline')?.classList.toggle('active', document.queryCommandState('underline'));
+            btnHL.classList.toggle('active', getComputedBackColor() === 'rgb(255, 242, 168)');
+            const ta = currentTextAlign();
+            alignBtns.left.classList.toggle('active', ta === 'left');
+            alignBtns.center.classList.toggle('active', ta === 'center');
+            alignBtns.right.classList.toggle('active', ta === 'right');
+            renderPreview(); wordCount();
+        }
+        function renderPreview() { /* (optional live preview target) */ }
+        function wordCount() { const t = editor.innerText.trim().replace(/\s+/g, ' '); document.getElementById('wc').textContent = (t ? t.split(' ').length : 0) + " words"; }
+        ['keyup', 'mouseup', 'input', 'selectionchange'].forEach(e => document.addEventListener(e, () => { refreshState(); }, { passive: true }));
+        renderPreview(); wordCount(); refreshState();
+
+        // ===== Recipients + History =====
+        const emailListEl = document.getElementById('emailList');
+        let _histTimer = null;
+        function debounce(fn, ms = 500) { clearTimeout(_histTimer); _histTimer = setTimeout(fn, ms); }
+
+        function getHistory() {
+            try { const a = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]'); return Array.isArray(a) ? Array.from(new Set(a.map(x => x.toLowerCase()))) : []; }
+            catch { return []; }
+        }
+        function saveHistory(emails) {
+            const set = new Set(getHistory()); emails.forEach(e => set.add(e.toLowerCase()));
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(Array.from(set)));
+        }
+
+        function addEmailField(value = '') {
+            const wrap = document.createElement('div'); wrap.className = 'email-item';
+            const label = document.createElement('label'); label.textContent = 'To'; label.style.minWidth = '72px';
+            const input = document.createElement('input'); input.type = 'email'; input.placeholder = 'example@domain.com'; input.value = value;
+            const remove = document.createElement('button'); remove.type = 'button'; remove.className = 'remove'; remove.textContent = 'Remove';
+            const hints = document.createElement('div'); hints.className = 'hint-list';
+
+            input.addEventListener('input', () => {
+                validateAll(); showHints(input);
+                debounce(() => { const v = input.value.trim(); if (EMAIL_RE.test(v)) saveHistory([v]); }, 500);
+            });
+            input.addEventListener('change', () => { const v = input.value.trim(); if (EMAIL_RE.test(v)) saveHistory([v]); });
+            input.addEventListener('focus', () => showHints(input));
+            input.addEventListener('blur', () => setTimeout(() => hideHints(hints), 150));
+            remove.onclick = () => { wrap.remove(); validateAll(); };
+
+            wrap.appendChild(label); wrap.appendChild(input); wrap.appendChild(remove); wrap.appendChild(hints);
+            emailListEl.appendChild(wrap); input.focus();
+            validateAll(); showHints(input);
+        }
+
+        function collectEmails() {
+            return Array.from(emailListEl.querySelectorAll('input[type="email"]')).map(i => i.value.trim()).filter(Boolean);
+        }
+
+        function validateAll() {
+            const inputs = Array.from(emailListEl.querySelectorAll('input[type="email"]'));
+            const vals = inputs.map(i => i.value.trim().toLowerCase()).filter(Boolean);
+            inputs.forEach(i => { const v = i.value.trim(); i.classList.remove('invalid', 'dup'); if (v && !EMAIL_RE.test(v)) i.classList.add('invalid'); });
+            const seen = new Set(); inputs.forEach(i => { const v = i.value.trim().toLowerCase(); if (!v) return; if (seen.has(v)) i.classList.add('dup'); else seen.add(v); });
+        }
+
+        function showHints(input) {
+            const hints = input.parentElement.querySelector('.hint-list');
+            const q = input.value.trim().toLowerCase();
+            const hist = getHistory();
+            const existing = new Set(collectEmails().map(e => e.toLowerCase()));
+            let list = q.length >= 2 ? hist.filter(e => e.includes(q)) : hist.slice(0, 8);
+            list = list.filter(e => !existing.has(e));
+            if (list.length === 0) { hints.style.display = 'none'; hints.innerHTML = ''; return; }
+            hints.innerHTML = list.map(e => `<div class="hint-item" data-email="${e}">${e}</div>`).join('');
+            hints.style.display = 'block';
+            hints.querySelectorAll('.hint-item').forEach(el => {
+                el.onclick = () => { input.value = el.dataset.email; saveHistory([input.value]); validateAll(); hideHints(hints); };
+            });
+        }
+        function hideHints(hints) { hints.style.display = 'none'; }
+
+        // Start with one recipient
+        addEmailField();
+
+        // ===== Attachments: accumulate + remove =====
+        const filesInput = document.getElementById('files');
+        const fileList = document.getElementById('fileList');
+        const dropZone = document.getElementById('dropZone');
+
+        /** @type {File[]} */
+        let selectedFiles = [];
+
+        const MAX_EACH = 6 * 1024 * 1024; // 6MB per file
+        const MAX_TOTAL = 50 * 1024 * 1024; // 50MB total (soft)
+
+        function renderFiles() {
+            fileList.innerHTML = '';
+            if (selectedFiles.length === 0) { return; }
+            let total = 0;
+            selectedFiles.forEach((f, idx) => {
+                total += f.size;
+                const item = document.createElement('span'); item.className = 'file-item';
+                item.innerHTML = `${f.name} (${Math.round(f.size / 1024)} KB) <button type="button" aria-label="Remove ${f.name}">x</button>`;
+                item.querySelector('button').onclick = () => { removeFileAt(idx); };
+                fileList.appendChild(item);
+            });
+            if (total > MAX_TOTAL) {
+                const warn = document.createElement('div');
+                warn.style.color = 'var(--warn)'; warn.style.marginTop = '6px';
+                warn.textContent = 'Total attachments exceed 50MB; sending may fail.';
+                fileList.appendChild(warn);
+            }
+        }
+
+        function removeFileAt(i) {
+            selectedFiles.splice(i, 1);
+            renderFiles();
+        }
+
+        function addFiles(files) {
+            const incoming = Array.from(files || []);
+            for (const f of incoming) {
+                if (f.size > MAX_EACH) { alert(`File too large: ${f.name}`); continue; }
+                const dup = selectedFiles.find(x => x.name === f.name && x.size === f.size && x.lastModified === f.lastModified);
+                if (dup) continue;
+                selectedFiles.push(f);
+            }
+            renderFiles();
+            filesInput.value = '';
+        }
+
+        filesInput.addEventListener('change', () => addFiles(filesInput.files));
+
+        ;['dragenter', 'dragover'].forEach(evt => {
+            dropZone.addEventListener(evt, (e) => { e.preventDefault(); e.stopPropagation(); dropZone.classList.add('drag'); });
+        });
+        ;['dragleave', 'drop'].forEach(evt => {
+            dropZone.addEventListener(evt, (e) => { e.preventDefault(); e.stopPropagation(); dropZone.classList.remove('drag'); });
+        });
+        dropZone.addEventListener('drop', (e) => {
+            const dt = e.dataTransfer;
+            if (dt && dt.files && dt.files.length) { addFiles(dt.files); }
+        });
+        dropZone.addEventListener('click', () => filesInput.click());
+
+        function fileToB64(file) {
+            return new Promise((resolve, reject) => {
+                const fr = new FileReader();
+                fr.onerror = () => reject(new Error('FileReader failed'));
+                fr.onload = () => {
+                    const result = String(fr.result || '');
+                    const base64 = (result.split(',')[1] || '');
+                    resolve({ base64, contentType: file.type || 'application/octet-stream' });
+                };
+                fr.readAsDataURL(file);
+            });
+        }
+        async function filesToAttachments() {
+            const out = [];
+            for (const f of selectedFiles) {
+                const { base64, contentType } = await fileToB64(f);
+                out.push({ filename: f.name, contentType, base64 });
+            }
+            return out;
+        }
+
+        // ===== Spinner & Result helpers =====
+        const overlayEl = document.getElementById('overlay');
+        const resultEl = document.getElementById('result');
+        const resBadge = document.getElementById('resBadge');
+        const resTitle = document.getElementById('resTitle');
+        const resMsg = document.getElementById('resMsg');
+        const btnOK = document.getElementById('btnOK');
+
+        let _lastSuccess = false;
+
+        function showSpinner() { overlayEl.classList.add('show'); }
+        function hideSpinner() { overlayEl.classList.remove('show'); }
+
+        function showResult(success, message) {
+            _lastSuccess = !!success;
+            resBadge.className = 'badge ' + (success ? 'ok' : 'err');
+            resBadge.textContent = success ? '✓' : '!';
+            resTitle.textContent = success ? 'Sent successfully' : 'Send failed';
+            resMsg.textContent = message || (success ? 'Your message has been delivered.' : 'Something went wrong. Please try again.');
+            resultEl.classList.add('show');
+        }
+        function hideResult() { resultEl.classList.remove('show'); }
+
+        btnOK.addEventListener('click', () => {
+            hideResult();
+            if (_lastSuccess) {
+                // Clear everything on success
+                clearAllInputs();
+            }
+            // On error: do nothing else (keep inputs as-is)
+        });
+
+        function clearAllInputs() {
+            // emails: remove all, add a fresh one
+            emailListEl.innerHTML = '';
+            addEmailField();
+
+            // subject
+            document.getElementById('subject').value = '';
+
+            // editor
+            editor.innerHTML = `<h2 style="margin:0 0 8px 0;"></h2><p><b></b><mark style="background:#fff2a8"></mark></p>`;
+            wordCount();
+
+            // files
+            selectedFiles = [];
+            renderFiles();
+            filesInput.value = '';
+        }
+
+        // ===== Send =====
+        async function sendEmail() {
+            const btn = document.getElementById('sendBtn');
+            btn.disabled = true;
+            showSpinner();
+            try {
+                const subject = document.getElementById('subject').value || "Eltourath Message";
+                const emails = collectEmails().filter(Boolean);
+                validateAll();
+                const invalid = emails.filter(e => !EMAIL_RE.test(e));
+                if (emails.length === 0) {
+                    hideSpinner();
+                    showResult(false, "Add at least one recipient.");
+                    btn.disabled = false;
+                    return;
+                }
+                if (invalid.length) {
+                    hideSpinner();
+                    showResult(false, "Invalid emails: " + invalid.join(", "));
+                    btn.disabled = false;
+                    return;
+                }
+                const unique = Array.from(new Set(emails.map(e => e.toLowerCase())));
+                const attachments = await filesToAttachments();
+
+                const res = await fetch(API_URL, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ to: unique, subject, htmlContent: editor.innerHTML, attachments })
+                });
+                let msg = ''; let ok = false;
+                try {
+                    const data = await res.json().catch(() => ({}));
+                    ok = res.ok && (data.ok !== false); // treat HTTP 200 as success even if data.ok missing
+                    msg = ok ? 'HTTP ' + res.status + ' — Message queued.' : (data.error || ('HTTP ' + res.status + ' — Failed to send.'));
+                } catch { msg = res.ok ? ('HTTP ' + res.status + ' — Sent.') : ('HTTP ' + res.status + ' — Failed.'); }
+
+                hideSpinner();
+                showResult(ok, msg);
+
+                if (ok) {
+                    // persist history
+                    unique.forEach(e => saveHistory([e]));
+                    // don't clear here; wait for OK to clear per requirement
+                }
+            } catch (err) {
+                hideSpinner();
+                showResult(false, "Unexpected error: " + err.message);
+            } finally {
+                btn.disabled = false;
+            }
+        }
+    </script>
+</body>
+
+</html>
