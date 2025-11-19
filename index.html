@@ -263,34 +263,6 @@
             border-color: #bcd3ff
         }
 
-        /* Reply block */
-        .reply-box {
-            border: 1px dashed var(--border);
-            border-radius: 12px;
-            padding: 10px 12px;
-            margin: 8px 0 14px;
-            background: #f9fbff;
-        }
-
-        .reply-toggle {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            font-size: 13px;
-            color: #334155;
-            cursor: pointer;
-            margin-bottom: 6px;
-        }
-
-        .reply-toggle input[type="checkbox"] {
-            width: 16px;
-            height: 16px;
-        }
-
-        .reply-fields {
-            margin-top: 4px;
-        }
-
         /* ===== Overlay + Spinner + Result Modal ===== */
         .overlay {
             position: fixed;
@@ -396,6 +368,38 @@
             padding: 8px 12px;
             cursor: pointer
         }
+
+        /* ===== Reply box ===== */
+        .reply-box {
+            border: 1px dashed var(--border);
+            border-radius: 10px;
+            padding: 8px 10px;
+            margin: 6px 0 12px;
+            background: #f9fbff;
+            font-size: 13px;
+        }
+
+        .reply-toggle {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            color: #0f172a;
+        }
+
+        .reply-toggle input {
+            margin: 0;
+        }
+
+        .reply-fields {
+            margin-top: 8px;
+            display: none;
+        }
+
+        .reply-fields .row label {
+            min-width: 110px;
+        }
     </style>
 </head>
 
@@ -416,20 +420,22 @@
                     <input id="subject" type="text" placeholder="Subject">
                 </div>
 
-                <!-- Reply box (زي ما انت كتبته) -->
+                <!-- Reply options (manual) -->
                 <div class="reply-box">
                     <label class="reply-toggle">
                         <input type="checkbox" id="replyMode">
                         This is a reply to an existing email
                     </label>
-                    <div id="replyFields" class="reply-fields" style="display: none;">
+                    <div id="replyFields" class="reply-fields">
                         <div class="row">
                             <label for="replyOriginalSubject">Original subject</label>
-                            <input id="replyOriginalSubject" type="text" placeholder="Paste the original subject from Gmail">
+                            <input id="replyOriginalSubject" type="text"
+                                placeholder="Paste the original subject from Gmail">
                         </div>
                         <div class="row">
                             <label for="replyMessageId">Message-ID</label>
-                            <input id="replyMessageId" type="text" placeholder="Paste Message-ID (optional, for same thread)">
+                            <input id="replyMessageId" type="text"
+                                placeholder="Paste Message-ID (optional, for same thread)">
                         </div>
                     </div>
                 </div>
@@ -526,16 +532,16 @@
         const EMAIL_RE = /^[A-Z0-9._%+\-]+@[A-Z0-9.\-]+\.[A-Z]{2,}$/i;
         const STORAGE_KEY = 'eltourath_email_history';
 
-        function getQueryParam(name) {
-            try {
-                const params = new URLSearchParams(window.location.search);
-                return params.get(name) || "";
-            } catch {
-                return "";
-            }
-        }
+        const replyModeCheckbox = document.getElementById('replyMode');
+        const replyFields = document.getElementById('replyFields');
+        const replyOriginalSubject = document.getElementById('replyOriginalSubject');
+        const replyMessageId = document.getElementById('replyMessageId');
 
-        // ===== Editor =====
+        replyModeCheckbox.addEventListener('change', () => {
+            replyFields.style.display = replyModeCheckbox.checked ? 'block' : 'none';
+        });
+
+        // ===== Editor (Word-like) =====
         document.execCommand('styleWithCSS', false, true);
         const editor = document.getElementById('editor');
         const btnHL = document.getElementById('btnHL');
@@ -612,10 +618,9 @@
             alignBtns.right.classList.toggle('active', ta === 'right');
             renderPreview(); wordCount();
         }
-        function renderPreview() { }
+        function renderPreview() { /* optional live preview */ }
         function wordCount() { const t = editor.innerText.trim().replace(/\s+/g, ' '); document.getElementById('wc').textContent = (t ? t.split(' ').length : 0) + " words"; }
         ['keyup', 'mouseup', 'input', 'selectionchange'].forEach(e => document.addEventListener(e, () => { refreshState(); }, { passive: true }));
-        renderPreview(); wordCount(); refreshState();
 
         // ===== Recipients + History =====
         const emailListEl = document.getElementById('emailList');
@@ -658,17 +663,9 @@
 
         function validateAll() {
             const inputs = Array.from(emailListEl.querySelectorAll('input[type="email"]'));
-            inputs.forEach(i => {
-                const v = i.value.trim();
-                i.classList.remove('invalid', 'dup');
-                if (v && !EMAIL_RE.test(v)) i.classList.add('invalid');
-            });
-            const seen = new Set();
-            inputs.forEach(i => {
-                const v = i.value.trim().toLowerCase();
-                if (!v) return;
-                if (seen.has(v)) i.classList.add('dup'); else seen.add(v);
-            });
+            const vals = inputs.map(i => i.value.trim().toLowerCase()).filter(Boolean);
+            inputs.forEach(i => { const v = i.value.trim(); i.classList.remove('invalid', 'dup'); if (v && !EMAIL_RE.test(v)) i.classList.add('invalid'); });
+            const seen = new Set(); inputs.forEach(i => { const v = i.value.trim().toLowerCase(); if (!v) return; if (seen.has(v)) i.classList.add('dup'); else seen.add(v); });
         }
 
         function showHints(input) {
@@ -690,14 +687,16 @@
         // Start with one recipient
         addEmailField();
 
-        // ===== Attachments =====
+        // ===== Attachments: accumulate + remove =====
         const filesInput = document.getElementById('files');
         const fileList = document.getElementById('fileList');
         const dropZone = document.getElementById('dropZone');
 
+        /** @type {File[]} */
         let selectedFiles = [];
-        const MAX_EACH = 6 * 1024 * 1024;
-        const MAX_TOTAL = 50 * 1024 * 1024;
+
+        const MAX_EACH = 6 * 1024 * 1024; // 6MB per file
+        const MAX_TOTAL = 50 * 1024 * 1024; // 50MB total (soft)
 
         function renderFiles() {
             fileList.innerHTML = '';
@@ -770,7 +769,7 @@
             return out;
         }
 
-        // ===== Spinner & Result =====
+        // ===== Spinner & Result helpers =====
         const overlayEl = document.getElementById('overlay');
         const resultEl = document.getElementById('result');
         const resBadge = document.getElementById('resBadge');
@@ -806,52 +805,18 @@
 
             document.getElementById('subject').value = '';
 
-            const replyMode = document.getElementById('replyMode');
-            const replyFields = document.getElementById('replyFields');
-            const replyOriginalSubject = document.getElementById('replyOriginalSubject');
-            const replyMessageId = document.getElementById('replyMessageId');
-            if (replyMode) replyMode.checked = false;
-            if (replyFields) replyFields.style.display = 'none';
-            if (replyOriginalSubject) replyOriginalSubject.value = '';
-            if (replyMessageId) replyMessageId.value = '';
-
             editor.innerHTML = `<h2 style="margin:0 0 8px 0;"></h2><p><b></b><mark style="background:#fff2a8"></mark></p>`;
             wordCount();
 
             selectedFiles = [];
             renderFiles();
             filesInput.value = '';
+
+            replyModeCheckbox.checked = false;
+            replyFields.style.display = 'none';
+            replyOriginalSubject.value = '';
+            replyMessageId.value = '';
         }
-
-        // ===== Reply mode: toggle + URL params =====
-        (function initReplyUI() {
-            const replyMode = document.getElementById('replyMode');
-            const replyFields = document.getElementById('replyFields');
-            if (!replyMode || !replyFields) return;
-
-            replyMode.addEventListener('change', () => {
-                replyFields.style.display = replyMode.checked ? 'block' : 'none';
-            });
-
-            const msd = getQueryParam("msd");
-            const sub = getQueryParam("sub");
-
-            if (sub) {
-                const subjInput = document.getElementById("subject");
-                const replyOriginalSubject = document.getElementById("replyOriginalSubject");
-                if (replyOriginalSubject) replyOriginalSubject.value = sub; // عشان تبان للأرشفة جوة البوكس
-            }
-
-            if (msd || sub) {
-                replyMode.checked = true;
-                replyFields.style.display = 'block';
-            }
-
-            if (msd) {
-                const replyMessageId = document.getElementById("replyMessageId");
-                if (replyMessageId) replyMessageId.value = msd;
-            }
-        })();
 
         // ===== Send =====
         async function sendEmail() {
@@ -859,7 +824,11 @@
             btn.disabled = true;
             showSpinner();
             try {
-                const subject = document.getElementById('subject').value || "Eltourath Message";
+                const replyMode = replyModeCheckbox.checked;
+                let subject = document.getElementById('subject').value || "Eltourath Message";
+                const origSubject = replyOriginalSubject.value.trim();
+                const msgId = replyMessageId.value.trim();
+
                 const emails = collectEmails().filter(Boolean);
                 validateAll();
                 const invalid = emails.filter(e => !EMAIL_RE.test(e));
@@ -878,9 +847,10 @@
                 const unique = Array.from(new Set(emails.map(e => e.toLowerCase())));
                 const attachments = await filesToAttachments();
 
-                const replyMode = document.getElementById('replyMode');
-                const replyMessageIdEl = document.getElementById('replyMessageId');
-                const replyOriginalSubjectEl = document.getElementById('replyOriginalSubject');
+                // لو Reply و مفيش Subject مكتوب، نستخدم Re: + Original subject
+                if (replyMode && origSubject && !/^re:/i.test(subject)) {
+                    subject = "Re: " + origSubject;
+                }
 
                 const payload = {
                     to: unique,
@@ -889,12 +859,9 @@
                     attachments
                 };
 
-                if (replyMode && replyMode.checked && replyMessageIdEl && replyMessageIdEl.value.trim()) {
-                    payload.replyRef = replyMessageIdEl.value.trim();
-                    // ممكن تستخدم ده في اللابمدا لو حبيت:
-                    if (replyOriginalSubjectEl && replyOriginalSubjectEl.value.trim()) {
-                        payload.replyOriginalSubject = replyOriginalSubjectEl.value.trim();
-                    }
+                if (replyMode && msgId) {
+                    payload.inReplyTo = msgId;
+                    payload.references = msgId;
                 }
 
                 const res = await fetch(API_URL, {
@@ -906,7 +873,9 @@
                 try {
                     const data = await res.json().catch(() => ({}));
                     ok = res.ok && (data.ok !== false);
-                    msg = ok ? 'HTTP ' + res.status + ' — Message queued.' : (data.error || ('HTTP ' + res.status + ' — Failed to send.'));
+                    msg = ok
+                        ? 'HTTP ' + res.status + ' — Message queued.'
+                        : (data.error || ('HTTP ' + res.status + ' — Failed to send.'));
                 } catch {
                     msg = res.ok ? ('HTTP ' + res.status + ' — Sent.') : ('HTTP ' + res.status + ' — Failed.');
                 }
@@ -924,8 +893,12 @@
                 btn.disabled = false;
             }
         }
+
+        // Initial
+        renderPreview();
+        wordCount();
+        refreshState();
     </script>
 </body>
 
 </html>
-
