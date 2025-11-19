@@ -53,6 +53,12 @@
             font-size: 21px
         }
 
+        .meta {
+            margin-top: 6px;
+            color: var(--muted);
+            font-size: 12px
+        }
+
         .body {
             padding: 18px 22px
         }
@@ -368,38 +374,6 @@
             padding: 8px 12px;
             cursor: pointer
         }
-
-        /* ===== Reply box ===== */
-        .reply-box {
-            border: 1px dashed var(--border);
-            border-radius: 10px;
-            padding: 8px 10px;
-            margin: 6px 0 12px;
-            background: #f9fbff;
-            font-size: 13px;
-        }
-
-        .reply-toggle {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            cursor: pointer;
-            font-weight: 600;
-            color: #0f172a;
-        }
-
-        .reply-toggle input {
-            margin: 0;
-        }
-
-        .reply-fields {
-            margin-top: 8px;
-            display: none;
-        }
-
-        .reply-fields .row label {
-            min-width: 110px;
-        }
     </style>
 </head>
 
@@ -420,23 +394,12 @@
                     <input id="subject" type="text" placeholder="Subject">
                 </div>
 
-                <!-- Reply options (manual) -->
-                <div class="reply-box">
-                    <label class="reply-toggle">
-                        <input type="checkbox" id="replyMode">
-                        This is a reply to an existing email
-                    </label>
-                    <div id="replyFields" class="reply-fields">
-                        <div class="row">
-                            <label for="replyOriginalSubject">Original subject</label>
-                            <input id="replyOriginalSubject" type="text"
-                                placeholder="Paste the original subject from Gmail">
-                        </div>
-                        <div class="row">
-                            <label for="replyMessageId">Message-ID</label>
-                            <input id="replyMessageId" type="text"
-                                placeholder="Paste Message-ID (optional, for same thread)">
-                        </div>
+                <!-- Reply checkbox + message id (لـ replay من الإكستنشن) -->
+                <div class="row">
+                    <label for="replyMsgId">Reply</label>
+                    <div style="display:flex;align-items:center;gap:8px;flex:1;">
+                        <input id="replyFlag" type="checkbox" style="width:16px;height:16px;flex:0 0 auto;">
+                        <input id="replyMsgId" type="text" placeholder="Gmail message id (from extension)">
                     </div>
                 </div>
 
@@ -532,14 +495,15 @@
         const EMAIL_RE = /^[A-Z0-9._%+\-]+@[A-Z0-9.\-]+\.[A-Z]{2,}$/i;
         const STORAGE_KEY = 'eltourath_email_history';
 
-        const replyModeCheckbox = document.getElementById('replyMode');
-        const replyFields = document.getElementById('replyFields');
-        const replyOriginalSubject = document.getElementById('replyOriginalSubject');
-        const replyMessageId = document.getElementById('replyMessageId');
-
-        replyModeCheckbox.addEventListener('change', () => {
-            replyFields.style.display = replyModeCheckbox.checked ? 'block' : 'none';
-        });
+        // helper: قراءة query param من URL (msd = message-id, sub = subject)
+        function getQueryParam(name) {
+            try {
+                const params = new URLSearchParams(window.location.search);
+                return params.get(name) || "";
+            } catch {
+                return "";
+            }
+        }
 
         // ===== Editor (Word-like) =====
         document.execCommand('styleWithCSS', false, true);
@@ -621,6 +585,7 @@
         function renderPreview() { /* optional live preview */ }
         function wordCount() { const t = editor.innerText.trim().replace(/\s+/g, ' '); document.getElementById('wc').textContent = (t ? t.split(' ').length : 0) + " words"; }
         ['keyup', 'mouseup', 'input', 'selectionchange'].forEach(e => document.addEventListener(e, () => { refreshState(); }, { passive: true }));
+        renderPreview(); wordCount(); refreshState();
 
         // ===== Recipients + History =====
         const emailListEl = document.getElementById('emailList');
@@ -663,9 +628,17 @@
 
         function validateAll() {
             const inputs = Array.from(emailListEl.querySelectorAll('input[type="email"]'));
-            const vals = inputs.map(i => i.value.trim().toLowerCase()).filter(Boolean);
-            inputs.forEach(i => { const v = i.value.trim(); i.classList.remove('invalid', 'dup'); if (v && !EMAIL_RE.test(v)) i.classList.add('invalid'); });
-            const seen = new Set(); inputs.forEach(i => { const v = i.value.trim().toLowerCase(); if (!v) return; if (seen.has(v)) i.classList.add('dup'); else seen.add(v); });
+            inputs.forEach(i => {
+                const v = i.value.trim();
+                i.classList.remove('invalid', 'dup');
+                if (v && !EMAIL_RE.test(v)) i.classList.add('invalid');
+            });
+            const seen = new Set();
+            inputs.forEach(i => {
+                const v = i.value.trim().toLowerCase();
+                if (!v) return;
+                if (seen.has(v)) i.classList.add('dup'); else seen.add(v);
+            });
         }
 
         function showHints(input) {
@@ -800,23 +773,46 @@
         });
 
         function clearAllInputs() {
+            // emails
             emailListEl.innerHTML = '';
             addEmailField();
 
+            // subject
             document.getElementById('subject').value = '';
 
+            // reply checkbox + id
+            const rf = document.getElementById('replyFlag');
+            const rid = document.getElementById('replyMsgId');
+            if (rf) rf.checked = false;
+            if (rid) rid.value = '';
+
+            // editor
             editor.innerHTML = `<h2 style="margin:0 0 8px 0;"></h2><p><b></b><mark style="background:#fff2a8"></mark></p>`;
             wordCount();
 
+            // files
             selectedFiles = [];
             renderFiles();
             filesInput.value = '';
-
-            replyModeCheckbox.checked = false;
-            replyFields.style.display = 'none';
-            replyOriginalSubject.value = '';
-            replyMessageId.value = '';
         }
+
+        // ===== Reply mode via ?msd= & ?sub= من الإكستنشن =====
+        (function initReplyModeFromUrl() {
+            const msd = getQueryParam("msd");   // message-id
+            const sub = getQueryParam("sub");   // subject من Gmail
+
+            if (sub) {
+                const subjInput = document.getElementById("subject");
+                if (subjInput) subjInput.value = sub;   // بدون Re:
+            }
+
+            if (msd) {
+                const replyInput = document.getElementById("replyMsgId");
+                const replyFlag = document.getElementById("replyFlag");
+                if (replyInput) replyInput.value = msd;
+                if (replyFlag) replyFlag.checked = true;
+            }
+        })();
 
         // ===== Send =====
         async function sendEmail() {
@@ -824,11 +820,7 @@
             btn.disabled = true;
             showSpinner();
             try {
-                const replyMode = replyModeCheckbox.checked;
-                let subject = document.getElementById('subject').value || "Eltourath Message";
-                const origSubject = replyOriginalSubject.value.trim();
-                const msgId = replyMessageId.value.trim();
-
+                const subject = document.getElementById('subject').value || "Eltourath Message";
                 const emails = collectEmails().filter(Boolean);
                 validateAll();
                 const invalid = emails.filter(e => !EMAIL_RE.test(e));
@@ -847,10 +839,8 @@
                 const unique = Array.from(new Set(emails.map(e => e.toLowerCase())));
                 const attachments = await filesToAttachments();
 
-                // لو Reply و مفيش Subject مكتوب، نستخدم Re: + Original subject
-                if (replyMode && origSubject && !/^re:/i.test(subject)) {
-                    subject = "Re: " + origSubject;
-                }
+                const replyFlag = document.getElementById('replyFlag');
+                const replyMsgId = (document.getElementById('replyMsgId')?.value || '').trim();
 
                 const payload = {
                     to: unique,
@@ -859,9 +849,9 @@
                     attachments
                 };
 
-                if (replyMode && msgId) {
-                    payload.inReplyTo = msgId;
-                    payload.references = msgId;
+                // لو checkbox متعلم والـ id موجود، نبعت replyRef
+                if (replyFlag && replyFlag.checked && replyMsgId) {
+                    payload.replyRef = replyMsgId;
                 }
 
                 const res = await fetch(API_URL, {
@@ -873,9 +863,7 @@
                 try {
                     const data = await res.json().catch(() => ({}));
                     ok = res.ok && (data.ok !== false);
-                    msg = ok
-                        ? 'HTTP ' + res.status + ' — Message queued.'
-                        : (data.error || ('HTTP ' + res.status + ' — Failed to send.'));
+                    msg = ok ? 'HTTP ' + res.status + ' — Message queued.' : (data.error || ('HTTP ' + res.status + ' — Failed to send.'));
                 } catch {
                     msg = res.ok ? ('HTTP ' + res.status + ' — Sent.') : ('HTTP ' + res.status + ' — Failed.');
                 }
@@ -893,11 +881,6 @@
                 btn.disabled = false;
             }
         }
-
-        // Initial
-        renderPreview();
-        wordCount();
-        refreshState();
     </script>
 </body>
 
