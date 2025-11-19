@@ -394,6 +394,12 @@
                     <input id="subject" type="text" placeholder="Subject">
                 </div>
 
+                <!-- NEW: Reply Msg ID (from Gmail extension) -->
+                <div class="row">
+                    <label for="replyMsgId">Reply Msg ID</label>
+                    <input id="replyMsgId" type="text" placeholder="Optional – Gmail message id">
+                </div>
+
                 <!-- Attachments (multi + remove) -->
                 <div class="attach">
                     <label for="files">Attachments</label>
@@ -486,6 +492,16 @@
         const EMAIL_RE = /^[A-Z0-9._%+\-]+@[A-Z0-9.\-]+\.[A-Z]{2,}$/i;
         const STORAGE_KEY = 'eltourath_email_history';
 
+        // helper لقراءة query string
+        function getQueryParam(name) {
+            try {
+                const params = new URLSearchParams(window.location.search);
+                return params.get(name) || "";
+            } catch {
+                return "";
+            }
+        }
+
         // ===== Editor (Word-like) =====
         document.execCommand('styleWithCSS', false, true);
         const editor = document.getElementById('editor');
@@ -567,6 +583,23 @@
         function wordCount() { const t = editor.innerText.trim().replace(/\s+/g, ' '); document.getElementById('wc').textContent = (t ? t.split(' ').length : 0) + " words"; }
         ['keyup', 'mouseup', 'input', 'selectionchange'].forEach(e => document.addEventListener(e, () => { refreshState(); }, { passive: true }));
         renderPreview(); wordCount(); refreshState();
+
+        // ===== Reply mode via ?msd=… =====
+        (function initReplyModeFromUrl() {
+            const msd = getQueryParam("msd");
+            if (!msd) return;
+
+            const replyInput = document.getElementById("replyMsgId");
+            if (replyInput) {
+                replyInput.value = msd;
+            }
+
+            const subjInput = document.getElementById("subject");
+            if (subjInput && !/^Re:/i.test(subjInput.value.trim())) {
+                const old = subjInput.value.trim();
+                subjInput.value = old ? "Re: " + old : "Re:";
+            }
+        })();
 
         // ===== Recipients + History =====
         const emailListEl = document.getElementById('emailList');
@@ -755,6 +788,9 @@
             // subject
             document.getElementById('subject').value = '';
 
+            // reply id
+            document.getElementById('replyMsgId').value = '';
+
             // editor
             editor.innerHTML = `<h2 style="margin:0 0 8px 0;"></h2><p><b></b><mark style="background:#fff2a8"></mark></p>`;
             wordCount();
@@ -789,26 +825,38 @@
                 }
                 const unique = Array.from(new Set(emails.map(e => e.toLowerCase())));
                 const attachments = await filesToAttachments();
+                const replyMsgId = (document.getElementById("replyMsgId")?.value || "").trim();
+
+                const payload = {
+                    to: unique,
+                    subject,
+                    htmlContent: editor.innerHTML,
+                    attachments
+                };
+
+                if (replyMsgId) {
+                    payload.replyRef = replyMsgId;
+                }
 
                 const res = await fetch(API_URL, {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ to: unique, subject, htmlContent: editor.innerHTML, attachments })
+                    body: JSON.stringify(payload)
                 });
                 let msg = ''; let ok = false;
                 try {
                     const data = await res.json().catch(() => ({}));
                     ok = res.ok && (data.ok !== false); // treat HTTP 200 as success even if data.ok missing
                     msg = ok ? 'HTTP ' + res.status + ' — Message queued.' : (data.error || ('HTTP ' + res.status + ' — Failed to send.'));
-                } catch { msg = res.ok ? ('HTTP ' + res.status + ' — Sent.') : ('HTTP ' + res.status + ' — Failed.'); }
+                } catch {
+                    msg = res.ok ? ('HTTP ' + res.status + ' — Sent.') : ('HTTP ' + res.status + ' — Failed.');
+                }
 
                 hideSpinner();
                 showResult(ok, msg);
 
                 if (ok) {
-                    // persist history
                     unique.forEach(e => saveHistory([e]));
-                    // don't clear here; wait for OK to clear per requirement
                 }
             } catch (err) {
                 hideSpinner();
